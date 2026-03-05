@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Fraunces (Display) ─── */
+@font-face {
+  font-family: "Fraunces";
+  src: url("/assets/fonts/Fraunces.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ─── General Sans (Body) ─── */
+@font-face {
+  font-family: "General Sans";
+  src: url("/assets/fonts/GeneralSans.woff2") format("woff2");
+  font-weight: 200 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* Core palette — warm editorial luxury */
+    --background:      0.98 0.005 85;
+    --foreground:      0.18 0.02  60;
+
+    --card:            1    0     0;
+    --card-foreground: 0.18 0.02  60;
+
+    --popover:         1    0     0;
+    --popover-foreground: 0.18 0.02 60;
+
+    /* Terracotta primary */
+    --primary:         0.56 0.17  40;
+    --primary-foreground: 0.98 0.005 85;
+
+    --secondary:       0.96 0.01  80;
+    --secondary-foreground: 0.28 0.02 60;
+
+    --muted:           0.94 0.01  80;
+    --muted-foreground: 0.52 0.02 60;
+
+    --accent:          0.94 0.01  80;
+    --accent-foreground: 0.28 0.02 60;
+
+    --destructive:     0.58 0.22  27;
+    --destructive-foreground: 0.98 0.005 85;
+
+    --border:          0.88 0.01  70;
+    --input:           0.88 0.01  70;
+    --ring:            0.56 0.17  40;
+
+    --success:         0.62 0.14  145;
+    --success-foreground: 0.98 0 0;
+
+    --chart-1: 0.646 0.222 41.116;
+    --chart-2: 0.6   0.118 184.704;
+    --chart-3: 0.398 0.07  227.392;
+    --chart-4: 0.828 0.189 84.429;
+    --chart-5: 0.769 0.188 70.08;
+
+    --sidebar:          0.97  0.01  80;
+    --sidebar-foreground: 0.18 0.02 60;
+    --sidebar-primary:  0.56  0.17  40;
+    --sidebar-primary-foreground: 0.98 0.005 85;
+    --sidebar-accent:   0.94  0.01  80;
+    --sidebar-accent-foreground: 0.28 0.02 60;
+    --sidebar-border:   0.88  0.01  70;
+    --sidebar-ring:     0.56  0.17  40;
+
+    /* Premium golden tokens */
+    --premium:         0.78 0.18  85;
+    --premium-dark:    0.60 0.16  75;
+    --premium-foreground: 0.15 0.04 60;
+    --premium-glow:    0.78 0.18  85;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "General Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Fraunces", serif;
+  }
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid oklch(var(--ring));
+  outline-offset: 2px;
+}
+
+/* Premium glow animation */
+@keyframes premium-pulse {
+  0%, 100% { box-shadow: 0 0 8px 2px oklch(var(--premium-glow) / 0.35); }
+  50%       { box-shadow: 0 0 16px 4px oklch(var(--premium-glow) / 0.60); }
+}
+.premium-glow {
+  animation: premium-pulse 2.2s ease-in-out infinite;
+}
+
+/* Product card hover */
+.product-card-img {
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.product-card:hover .product-card-img {
+  transform: scale(1.04);
+}
+
+/* Hero grain overlay */
+.grain-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  border-radius: inherit;
+}
