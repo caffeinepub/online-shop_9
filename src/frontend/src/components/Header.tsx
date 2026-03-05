@@ -5,6 +5,7 @@ import {
   Crown,
   LogOut,
   Menu,
+  RefreshCw,
   Settings,
   ShoppingCart,
   User,
@@ -94,6 +95,17 @@ export function Header() {
               </motion.div>
             </Link>
           )}
+
+          {/* Refresh */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => window.location.reload()}
+            data-ocid="nav.refresh_button"
+            aria-label="Обновить страницу"
+          >
+            <RefreshCw className="w-5 h-5" />
+          </Button>
 
           {/* Cart */}
           <Button

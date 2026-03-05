@@ -1,5 +1,12 @@
 import { Link, Outlet } from "@tanstack/react-router";
-import { ArrowLeft, ClipboardList, Crown, Lock, Package } from "lucide-react";
+import {
+  ArrowLeft,
+  ClipboardList,
+  Crown,
+  Lock,
+  Package,
+  RefreshCw,
+} from "lucide-react";
 import { useState } from "react";
 import { AdminPasswordGate } from "./AdminPasswordGate";
 
@@ -51,6 +58,17 @@ export function AdminLayout() {
           </Link>
 
           <div className="pt-4 border-t border-border mt-2 space-y-1">
+            {/* Refresh page */}
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              data-ocid="admin.refresh.button"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Обновить страницу
+            </button>
+
             <Link
               to="/"
               className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
