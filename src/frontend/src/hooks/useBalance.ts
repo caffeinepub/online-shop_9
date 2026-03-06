@@ -126,3 +126,56 @@ export function adminTopUpUser(
 
   return true;
 }
+
+/** Credit balance to any user. Usable by self (e.g. after card top-up) or admin. */
+export function creditBalance(
+  userId: string,
+  amount: number,
+  description?: string,
+): boolean {
+  if (!/^\d+$/.test(userId)) return false;
+
+  const current = (() => {
+    const raw = localStorage.getItem(balanceKey(userId));
+    const parsed = Number.parseFloat(raw ?? "0");
+    return Number.isNaN(parsed) ? 0 : parsed;
+  })();
+
+  const newBalance = Number.parseFloat((current + amount).toFixed(2));
+  localStorage.setItem(balanceKey(userId), newBalance.toFixed(2));
+
+  const tx: Transaction = {
+    id: `tx_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    type: "deposit",
+    amount,
+    description: description ?? `Пополнение на $${amount.toFixed(2)}`,
+    date: new Date().toISOString(),
+  };
+
+  const existingHistory = (() => {
+    try {
+      const raw = localStorage.getItem(historyKey(userId));
+      if (!raw) return [];
+      return JSON.parse(raw) as Transaction[];
+    } catch {
+      return [];
+    }
+  })();
+
+  localStorage.setItem(
+    historyKey(userId),
+    JSON.stringify([tx, ...existingHistory]),
+  );
+
+  return true;
+}
+
+/** Called by admin to grant premium to a user by numeric ID. */
+export function adminGrantPremiumToUser(userId: string, days: number): boolean {
+  if (!/^\d+$/.test(userId)) return false;
+  if (days < 1) return false;
+
+  const expiry = Date.now() + days * 24 * 60 * 60 * 1000;
+  localStorage.setItem(`shop_premium_expiry_${userId}`, expiry.toString());
+  return true;
+}

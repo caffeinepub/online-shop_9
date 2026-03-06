@@ -7,13 +7,16 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Clock,
+  CreditCard,
   Crown,
   Hash,
+  ShieldCheck,
   Wallet,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { useEffect } from "react";
 import { toast } from "sonner";
-import { useBalance } from "../hooks/useBalance";
+import { creditBalance, useBalance } from "../hooks/useBalance";
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat("ru-RU", {
@@ -25,9 +28,34 @@ function formatDate(iso: string): string {
   }).format(new Date(iso));
 }
 
+const TOP_UP_AMOUNTS = [5, 10, 20, 50];
+
 export function BalancePage() {
   const { balance, history, userId, spendBalance } = useBalance();
   const navigate = useNavigate();
+
+  // Handle Stripe return with topup_amount param
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const topupOk = params.get("topup_ok");
+    const topupAmount = params.get("topup_amount");
+
+    if (topupOk === "1" && topupAmount) {
+      const amount = Number.parseFloat(topupAmount);
+      if (!Number.isNaN(amount) && amount > 0) {
+        const ok = creditBalance(
+          userId,
+          amount,
+          `Пополнение через банковскую карту $${amount.toFixed(2)}`,
+        );
+        if (ok) {
+          toast.success(`Баланс пополнен на $${amount.toFixed(2)}`);
+        }
+      }
+      // Clean URL params
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [userId]);
 
   function handlePayPremium() {
     const ok = spendBalance(5, "Активация Премиум-подписки");
@@ -40,6 +68,12 @@ export function BalancePage() {
     localStorage.setItem("shop_premium_expiry", expiry.toString());
     toast.success("Премиум активирован на 30 дней!");
     navigate({ to: "/premium" });
+  }
+
+  function handleCardTopUp(amount: number) {
+    const successUrl = `${window.location.origin}/balance?topup_amount=${amount}&topup_ok=1`;
+    const stripeUrl = `https://buy.stripe.com/test_3cs9Dvfgwbzz8LC000?success_url=${encodeURIComponent(successUrl)}`;
+    window.location.href = stripeUrl;
   }
 
   return (
@@ -66,7 +100,7 @@ export function BalancePage() {
               Мой баланс
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Баланс пополняет только администратор
+              Пополните баланс картой или через администратора
             </p>
           </div>
         </motion.div>
@@ -142,11 +176,97 @@ export function BalancePage() {
           </Card>
         </motion.div>
 
+        {/* Top-up via bank card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="mb-6"
+        >
+          <Card
+            className="overflow-hidden border-2"
+            style={{ borderColor: "oklch(var(--primary) / 0.18)" }}
+          >
+            <CardHeader className="pb-4 pt-6 px-6">
+              <CardTitle className="flex items-center gap-2 font-display text-lg">
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ background: "oklch(var(--primary) / 0.1)" }}
+                >
+                  <CreditCard
+                    className="w-4 h-4"
+                    style={{ color: "oklch(var(--primary))" }}
+                  />
+                </div>
+                Пополнить картой
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Мгновенное зачисление после оплаты
+              </p>
+            </CardHeader>
+
+            <CardContent className="px-6 pb-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                {TOP_UP_AMOUNTS.map((amount) => (
+                  <motion.button
+                    key={amount}
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => handleCardTopUp(amount)}
+                    data-ocid={`balance.topup.button.${amount}`}
+                    className="relative flex flex-col items-center justify-center py-4 rounded-xl border-2 font-semibold transition-all cursor-pointer"
+                    style={{
+                      borderColor: "oklch(var(--primary) / 0.25)",
+                      background: "oklch(var(--primary) / 0.04)",
+                      color: "oklch(var(--foreground))",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.background =
+                        "oklch(var(--primary) / 0.1)";
+                      (e.currentTarget as HTMLElement).style.borderColor =
+                        "oklch(var(--primary) / 0.5)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.background =
+                        "oklch(var(--primary) / 0.04)";
+                      (e.currentTarget as HTMLElement).style.borderColor =
+                        "oklch(var(--primary) / 0.25)";
+                    }}
+                  >
+                    <span
+                      className="text-2xl font-bold font-display"
+                      style={{ color: "oklch(var(--primary))" }}
+                    >
+                      ${amount}
+                    </span>
+                    <span className="text-xs text-muted-foreground mt-0.5">
+                      USD
+                    </span>
+                  </motion.button>
+                ))}
+              </div>
+
+              {/* Stripe trust badge */}
+              <Separator className="mb-4" />
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Безопасная оплата через</span>
+                <span
+                  className="font-bold tracking-tight"
+                  style={{ color: "oklch(var(--primary))" }}
+                >
+                  Stripe
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
         {/* Transaction history */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.12 }}
+          transition={{ duration: 0.4, delay: 0.16 }}
         >
           <Card>
             <CardHeader className="pb-4">
@@ -171,7 +291,7 @@ export function BalancePage() {
                     Операций пока нет
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Обратитесь к администратору для пополнения баланса
+                    Пополните баланс картой или обратитесь к администратору
                   </p>
                 </div>
               ) : (

@@ -1,46 +1,45 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Principal as PrincipalClass } from "@dfinity/principal";
-import type { Principal } from "@icp-sdk/core/principal";
-import { Crown, Loader2, UserCheck } from "lucide-react";
+import { CheckCircle2, Crown, UserCheck } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useGrantPremium } from "../../hooks/useQueries";
+import { adminGrantPremiumToUser } from "../../hooks/useBalance";
+
+interface SuccessInfo {
+  userId: string;
+  days: number;
+}
 
 export function AdminPremiumPage() {
-  const { mutateAsync: grantPremium, isPending } = useGrantPremium();
-  const [principalStr, setPrincipalStr] = useState("");
+  const [userId, setUserId] = useState("");
   const [days, setDays] = useState("30");
+  const [lastSuccess, setLastSuccess] = useState<SuccessInfo | null>(null);
 
-  async function handleGrant() {
-    if (!principalStr.trim()) {
-      toast.error("Введите Principal");
+  function handleGrant() {
+    const trimmedId = userId.trim();
+    if (!trimmedId || !/^\d+$/.test(trimmedId)) {
+      toast.error("Введите корректный числовой ID пользователя");
       return;
     }
+
     const daysNum = Number(days);
     if (!daysNum || daysNum < 1) {
-      toast.error("Укажите количество дней");
+      toast.error("Укажите количество дней (минимум 1)");
       return;
     }
 
-    let principal: Principal;
-    try {
-      principal = PrincipalClass.fromText(
-        principalStr.trim(),
-      ) as unknown as Principal;
-    } catch {
-      toast.error("Неверный формат Principal");
-      return;
-    }
-
-    try {
-      await grantPremium({ user: principal, days: BigInt(daysNum) });
-      toast.success(`Премиум выдан на ${daysNum} дней`);
-      setPrincipalStr("");
+    const ok = adminGrantPremiumToUser(trimmedId, daysNum);
+    if (ok) {
+      toast.success(
+        `Премиум выдан пользователю #${trimmedId} на ${daysNum} дней`,
+      );
+      setLastSuccess({ userId: trimmedId, days: daysNum });
+      setUserId("");
       setDays("30");
-    } catch {
-      toast.error("Ошибка выдачи премиума");
+    } else {
+      toast.error("Ошибка выдачи премиума. Проверьте введённые данные.");
     }
   }
 
@@ -62,20 +61,27 @@ export function AdminPremiumPage() {
       </div>
 
       <div className="bg-card border border-border rounded-xl p-6 space-y-5">
+        {/* User ID input */}
         <div className="space-y-1.5">
-          <Label htmlFor="grant-principal">Principal пользователя</Label>
+          <Label htmlFor="grant-user-id">ID пользователя</Label>
           <Input
-            id="grant-principal"
-            placeholder="xxxxx-xxxxx-xxxxx-xxxxx-cai"
-            value={principalStr}
-            onChange={(e) => setPrincipalStr(e.target.value)}
-            data-ocid="admin.premium.input"
+            id="grant-user-id"
+            placeholder="например: 123456"
+            value={userId}
+            maxLength={10}
+            onChange={(e) => {
+              const val = e.target.value.replace(/\D/g, "");
+              setUserId(val);
+            }}
+            data-ocid="admin.premium.user_id.input"
           />
           <p className="text-xs text-muted-foreground">
-            Введите Principal ID пользователя, которому нужно выдать Премиум.
+            Введите числовой ID пользователя, которому нужно выдать Премиум.
+            Пользователь видит свой ID на странице "Мой баланс".
           </p>
         </div>
 
+        {/* Days input */}
         <div className="space-y-1.5">
           <Label htmlFor="grant-days">Количество дней</Label>
           <Input
@@ -85,13 +91,12 @@ export function AdminPremiumPage() {
             max="365"
             value={days}
             onChange={(e) => setDays(e.target.value)}
-            data-ocid="admin.premium.input"
+            data-ocid="admin.premium.days.input"
           />
         </div>
 
         <Button
           onClick={handleGrant}
-          disabled={isPending}
           className="w-full gap-2 font-semibold"
           data-ocid="admin.premium.submit_button"
           style={{
@@ -101,14 +106,54 @@ export function AdminPremiumPage() {
             border: "none",
           }}
         >
-          {isPending ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <UserCheck className="w-4 h-4" />
-          )}
+          <UserCheck className="w-4 h-4" />
           Выдать Премиум
         </Button>
       </div>
+
+      {/* Success state */}
+      <AnimatePresence>
+        {lastSuccess && (
+          <motion.div
+            key="success"
+            initial={{ opacity: 0, y: 10, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.3 }}
+            className="flex items-start gap-3 rounded-xl border px-5 py-4"
+            style={{
+              borderColor: "oklch(var(--success) / 0.35)",
+              background: "oklch(var(--success) / 0.07)",
+            }}
+            data-ocid="admin.premium.success_state"
+          >
+            <CheckCircle2
+              className="w-5 h-5 mt-0.5 shrink-0"
+              style={{ color: "oklch(var(--success))" }}
+            />
+            <div>
+              <p
+                className="text-sm font-semibold"
+                style={{ color: "oklch(var(--success))" }}
+              >
+                Премиум успешно выдан
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Пользователь{" "}
+                <span className="font-mono font-bold">
+                  #{lastSuccess.userId}
+                </span>{" "}
+                — {lastSuccess.days}{" "}
+                {lastSuccess.days === 1
+                  ? "день"
+                  : lastSuccess.days < 5
+                    ? "дня"
+                    : "дней"}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <p className="text-xs text-muted-foreground">
         Премиум будет выдан немедленно и активирован на указанное количество
