@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   ClipboardList,
   Crown,
+  Lightbulb,
   Lock,
   Package,
   RefreshCw,
@@ -47,6 +48,13 @@ export function AdminLayout() {
           >
             <ClipboardList className="w-4 h-4" />
             Заказы
+          </Link>
+          <Link
+            to="/admin/showcase"
+            className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-medium hover:bg-muted transition-colors [&.active]:bg-primary [&.active]:text-primary-foreground"
+          >
+            <Lightbulb className="w-4 h-4" />
+            Витрина лампочек
           </Link>
           <Link
             to="/admin/premium"

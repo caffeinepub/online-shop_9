@@ -19,6 +19,7 @@ import { AdminLayout } from "./pages/admin/AdminLayout";
 import { AdminOrdersPage } from "./pages/admin/AdminOrdersPage";
 import { AdminPremiumPage } from "./pages/admin/AdminPremiumPage";
 import { AdminProductsPage } from "./pages/admin/AdminProductsPage";
+import { AdminShowcasePage } from "./pages/admin/AdminShowcasePage";
 
 // ─── Root Layout ───────────────────────────────────────────
 function RootLayout() {
@@ -100,6 +101,12 @@ const adminPremiumRoute = createRoute({
   component: AdminPremiumPage,
 });
 
+const adminShowcaseRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: "/showcase",
+  component: AdminShowcasePage,
+});
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   productRoute,
@@ -111,6 +118,7 @@ const routeTree = rootRoute.addChildren([
     adminProductsRoute,
     adminOrdersRoute,
     adminPremiumRoute,
+    adminShowcaseRoute,
   ]),
 ]);
 

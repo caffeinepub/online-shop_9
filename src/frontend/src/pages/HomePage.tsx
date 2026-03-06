@@ -1,10 +1,12 @@
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PackageSearch } from "lucide-react";
+import { PackageSearch, Star, TrendingUp } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { ProductCard } from "../components/ProductCard";
 import { SAMPLE_CATEGORIES, SAMPLE_PRODUCTS } from "../data/sampleProducts";
+import { getShowcaseItems } from "../data/showcaseItems";
 import { useCategories, useProducts } from "../hooks/useQueries";
 
 const containerVariants = {
@@ -23,6 +25,7 @@ const itemVariants = {
 
 export function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const showcaseItems = getShowcaseItems();
 
   const { data: categoriesData, isLoading: catLoading } = useCategories();
   const {
@@ -49,8 +52,8 @@ export function HomePage() {
       {/* Hero */}
       <section className="relative overflow-hidden grain-overlay">
         <img
-          src="/assets/generated/shop-hero.dim_1200x500.jpg"
-          alt="Магазин — широкий ассортимент товаров"
+          src="/assets/generated/shop-hero-bulbs.dim_1200x500.jpg"
+          alt="Магазин лампочек — широкий ассортимент"
           className="w-full h-64 md:h-80 object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-foreground/60 via-foreground/20 to-transparent" />
@@ -62,15 +65,69 @@ export function HomePage() {
               transition={{ duration: 0.6 }}
             >
               <h1 className="font-display text-4xl md:text-6xl font-bold text-white leading-tight">
-                Качество,
+                Лампочки
                 <br />
-                которому доверяют
+                для каждого
               </h1>
               <p className="mt-3 text-white/80 text-lg max-w-md">
-                Отборные товары для вашего стиля жизни
+                Все виды лампочек — от классики до умных RGB
               </p>
             </motion.div>
           </div>
+        </div>
+      </section>
+
+      {/* Wide Assortment Section */}
+      <section className="bg-muted/40 border-b py-10">
+        <div className="container mx-auto px-4">
+          <div className="flex items-center gap-3 mb-2">
+            <TrendingUp className="w-6 h-6 text-primary" />
+            <h2 className="font-display text-2xl md:text-3xl font-bold">
+              Широкий ассортимент товаров
+            </h2>
+          </div>
+          <p className="text-muted-foreground mb-7 text-sm md:text-base">
+            Самые новые и популярные виды товаров — только лучшее для вас
+          </p>
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4"
+            data-ocid="popular.list"
+          >
+            {showcaseItems.map((item, i) => (
+              <motion.div
+                key={item.id}
+                variants={itemVariants}
+                className="group flex flex-col items-center bg-card rounded-xl overflow-hidden shadow-sm border hover:shadow-md transition-shadow cursor-pointer"
+                data-ocid={`popular.item.${i + 1}`}
+              >
+                <div className="relative w-full aspect-square overflow-hidden bg-muted">
+                  <img
+                    src={item.img}
+                    alt={item.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <Badge
+                    className="absolute top-2 left-2 text-[10px] py-0.5 px-1.5 flex items-center gap-1"
+                    variant="default"
+                  >
+                    <Star className="w-2.5 h-2.5" />
+                    {item.label}
+                  </Badge>
+                </div>
+                <div className="p-3 w-full text-center">
+                  <p className="text-xs text-muted-foreground mb-0.5">
+                    {item.tag}
+                  </p>
+                  <p className="text-sm font-semibold leading-tight line-clamp-2">
+                    {item.name}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
       </section>
 
