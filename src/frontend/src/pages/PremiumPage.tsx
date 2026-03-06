@@ -1,33 +1,26 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useNavigate } from "@tanstack/react-router";
 import {
   BadgeCheck,
   CheckCircle,
   Crown,
-  Loader2,
+  ExternalLink,
   MessageSquare,
   Package,
   Shield,
   Sparkles,
+  Wallet,
 } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { motion } from "motion/react";
 import { toast } from "sonner";
+import { useBalance } from "../hooks/useBalance";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import {
-  useIsPremiumActive,
-  usePremiumStatus,
-  useSetPremiumExpiry,
-} from "../hooks/useQueries";
+import { useIsPremiumActive, usePremiumStatus } from "../hooks/useQueries";
+
+// TODO: Replace with your real Stripe Payment Link from dashboard.stripe.com
+// Create a Payment Link for $5 (or equivalent) and paste the URL here.
+const STRIPE_PAYMENT_LINK = "https://buy.stripe.com/test_3cs9Dvfgwbzz8LC000";
 
 const BENEFITS = [
   {
@@ -62,55 +55,43 @@ function formatExpiry(ns: bigint): string {
 }
 
 export function PremiumPage() {
-  const navigate = useNavigate();
   const { identity, login } = useInternetIdentity();
   const isLoggedIn = !!identity;
+  const navigate = useNavigate();
+  const { balance, spendBalance } = useBalance();
 
   const { data: isPremium } = useIsPremiumActive();
   const { data: premiumExpiry } = usePremiumStatus();
-  const { mutateAsync: setPremiumExpiry } = useSetPremiumExpiry();
 
-  const [payModalOpen, setPayModalOpen] = useState(false);
-  const [cardNumber, setCardNumber] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [cvv, setCvv] = useState("");
-  const [paying, setPaying] = useState(false);
-  const [paid, setPaid] = useState(false);
-
-  async function handlePay() {
-    if (!cardNumber || !expiry || !cvv) {
-      toast.error("Заполните данные карты");
+  function handlePayWithBalance() {
+    const ok = spendBalance(5, "Активация Премиум-подписки");
+    if (!ok) {
+      toast.error("Недостаточно средств. Пополните баланс.");
       return;
     }
-    setPaying(true);
-    try {
-      await new Promise((r) => setTimeout(r, 1500));
-      // 30 days from now in nanoseconds
-      const expiryNs =
-        BigInt(Date.now()) * BigInt(1_000_000) +
-        BigInt(30 * 24 * 60 * 60) * BigInt(1_000_000_000);
-      await setPremiumExpiry(expiryNs);
-      setPaid(true);
-      setTimeout(() => {
-        setPayModalOpen(false);
-        navigate({ to: "/" });
-      }, 2000);
-    } catch {
-      toast.error("Ошибка оплаты. Попробуйте ещё раз.");
-    } finally {
-      setPaying(false);
+    const expiry = Date.now() + 30 * 24 * 60 * 60 * 1000;
+    localStorage.setItem("shop_premium_expiry", expiry.toString());
+    toast.success("Премиум активирован!");
+    navigate({ to: "/premium-success" });
+  }
+
+  function handleBuyPremium() {
+    if (!isLoggedIn) {
+      toast("Сначала войдите в аккаунт", {
+        action: {
+          label: "Войти",
+          onClick: login,
+        },
+      });
+      return;
     }
-  }
-
-  function formatCardNumber(val: string) {
-    const digits = val.replace(/\D/g, "").slice(0, 16);
-    return digits.replace(/(.{4})/g, "$1 ").trim();
-  }
-
-  function formatCardExpiry(val: string) {
-    const digits = val.replace(/\D/g, "").slice(0, 4);
-    if (digits.length >= 3) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-    return digits;
+    // Redirect to Stripe-hosted payment page.
+    // After payment, Stripe redirects to /premium-success?session_id=...
+    const successUrl = `${window.location.origin}/premium-success?session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl = `${window.location.origin}/premium`;
+    // Build the payment link with return URLs if supported, otherwise redirect directly
+    const paymentUrl = `${STRIPE_PAYMENT_LINK}?success_url=${encodeURIComponent(successUrl)}&cancel_url=${encodeURIComponent(cancelUrl)}`;
+    window.location.href = paymentUrl;
   }
 
   return (
@@ -294,39 +275,71 @@ export function PremiumPage() {
                     <Button
                       className="w-full"
                       variant="outline"
-                      onClick={() => setPayModalOpen(true)}
+                      onClick={handleBuyPremium}
                       data-ocid="premium.primary_button"
                     >
                       <Sparkles className="w-4 h-4 mr-2" />
-                      Продлить
+                      Продлить через Stripe
                     </Button>
                   </div>
                 ) : (
-                  <Button
-                    className="w-full h-12 text-base font-bold premium-glow"
-                    onClick={() => {
-                      if (!isLoggedIn) {
-                        toast("Сначала войдите в аккаунт", {
-                          action: {
-                            label: "Войти",
-                            onClick: login,
-                          },
-                        });
-                      } else {
-                        setPayModalOpen(true);
+                  <div className="space-y-3">
+                    <Button
+                      className="w-full h-12 text-base font-bold premium-glow"
+                      onClick={handleBuyPremium}
+                      data-ocid="premium.primary_button"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, oklch(var(--premium)), oklch(var(--premium-dark)))",
+                        color: "oklch(var(--premium-foreground))",
+                        border: "none",
+                      }}
+                    >
+                      <Crown className="w-5 h-5 mr-2" />
+                      Купить за $5
+                      <ExternalLink className="w-4 h-4 ml-2 opacity-70" />
+                    </Button>
+
+                    {/* Pay with balance */}
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      disabled={balance < 5}
+                      onClick={handlePayWithBalance}
+                      data-ocid="premium.balance_button"
+                      style={
+                        balance >= 5
+                          ? {
+                              borderColor: "oklch(var(--primary) / 0.4)",
+                              color: "oklch(var(--primary))",
+                            }
+                          : {}
                       }
-                    }}
-                    data-ocid="premium.primary_button"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, oklch(var(--premium)), oklch(var(--premium-dark)))",
-                      color: "oklch(var(--premium-foreground))",
-                      border: "none",
-                    }}
-                  >
-                    <Crown className="w-5 h-5 mr-2" />
-                    Купить за $5
-                  </Button>
+                    >
+                      <Wallet className="w-4 h-4 mr-2" />
+                      Оплатить с баланса ($
+                      {balance.toFixed(2)})
+                    </Button>
+
+                    {/* Stripe branding */}
+                    <p className="text-xs text-center text-muted-foreground flex items-center justify-center gap-1.5">
+                      <svg
+                        viewBox="0 0 60 25"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="38"
+                        height="16"
+                        aria-label="Stripe"
+                        className="opacity-50"
+                      >
+                        <title>Stripe</title>
+                        <path
+                          fill="currentColor"
+                          d="M59.64 14.28h-8.06c.19 1.93 1.6 2.55 3.2 2.55 1.64 0 2.96-.37 4.05-.95v3.32a8.33 8.33 0 0 1-4.56 1.1c-4.01 0-6.83-2.5-6.83-7.48 0-4.19 2.39-7.52 6.3-7.52 3.92 0 5.96 3.28 5.96 7.5 0 .4-.04 1.26-.06 1.48zm-5.92-5.62c-1.03 0-2.17.73-2.17 2.58h4.23c0-1.85-1.05-2.58-2.06-2.58zM40.95 20.3c-1.44 0-2.32-.6-2.9-1.04l-.02 4.63-4.12.87V5.57h3.76l.08 1.02a4.7 4.7 0 0 1 3.23-1.29c2.9 0 5.62 2.6 5.62 7.4 0 5.23-2.7 7.6-5.65 7.6zM40 8.95c-.95 0-1.54.34-1.97.81l.02 6.12c.4.44.98.78 1.95.78 1.52 0 2.54-1.65 2.54-3.87 0-2.15-1.04-3.84-2.54-3.84zM28.24 5.57h4.13v14.44h-4.13V5.57zm0-4.7L32.37 0v3.36l-4.13.88V.88zm-4.32 9.35v9.79H19.8V5.57h3.7l.12 1.22c1-1.77 3.07-1.41 3.62-1.22v3.79c-.52-.17-2.29-.43-3.32.07zm-8.55 4.72c0 2.43 2.6 1.68 3.12 1.46v3.36c-.55.3-1.54.54-2.89.54a4.15 4.15 0 0 1-4.27-4.24l.01-9.73h2.96V5.57h1.07V2.7l4.01-.86v3.73h3.13v3.36h-3.13l-.01 5.72zm-5.51-.05c-.82 0-1.79.3-1.79 1.43 0 1.06.82 1.5 1.82 1.5.47 0 .85-.08 1.15-.2V14.6c-.3.12-.72.2-1.18.2zm-4.7-8.54c.96 0 1.71-.76 1.71-1.7s-.76-1.69-1.7-1.69-1.7.76-1.7 1.69.76 1.7 1.7 1.7zm0 1.27c-2.73 0-4.73-1.41-4.73-3.52C.43 3.16 2.43 1.75 5.16 1.75c2.72 0 4.73 1.4 4.73 3.52 0 2.11-2.01 3.52-4.73 3.52z"
+                        />
+                      </svg>
+                      Безопасная оплата через Stripe
+                    </p>
+                  </div>
                 )}
               </div>
             </motion.div>
@@ -346,138 +359,6 @@ export function PremiumPage() {
           </motion.div>
         </div>
       </section>
-
-      {/* Payment Modal */}
-      <Dialog
-        open={payModalOpen}
-        onOpenChange={(v) => !paying && setPayModalOpen(v)}
-      >
-        <DialogContent className="max-w-sm" data-ocid="premium.dialog">
-          <DialogHeader>
-            <DialogTitle className="font-display flex items-center gap-2">
-              <Crown
-                className="w-5 h-5"
-                style={{ color: "oklch(var(--premium-dark))" }}
-              />
-              Оплата Премиума
-            </DialogTitle>
-          </DialogHeader>
-
-          <AnimatePresence mode="wait">
-            {paid ? (
-              <motion.div
-                key="success"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="py-8 text-center"
-                data-ocid="premium.success_state"
-              >
-                <CheckCircle
-                  className="w-16 h-16 mx-auto mb-4"
-                  style={{ color: "oklch(var(--premium-dark))" }}
-                />
-                <h3 className="font-display text-xl font-bold mb-2">
-                  Оплата прошла!
-                </h3>
-                <p className="text-muted-foreground text-sm">
-                  Премиум активирован на 30 дней. Перенаправление…
-                </p>
-              </motion.div>
-            ) : (
-              <motion.div
-                key="form"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="space-y-4 py-2"
-              >
-                <div className="space-y-1.5">
-                  <Label htmlFor="card-num">Номер карты</Label>
-                  <Input
-                    id="card-num"
-                    placeholder="1234 5678 9012 3456"
-                    value={cardNumber}
-                    onChange={(e) =>
-                      setCardNumber(formatCardNumber(e.target.value))
-                    }
-                    inputMode="numeric"
-                    data-ocid="premium.input"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="card-exp">Срок</Label>
-                    <Input
-                      id="card-exp"
-                      placeholder="MM/YY"
-                      value={expiry}
-                      onChange={(e) =>
-                        setExpiry(formatCardExpiry(e.target.value))
-                      }
-                      inputMode="numeric"
-                      maxLength={5}
-                      data-ocid="premium.input"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="card-cvv">CVV</Label>
-                    <Input
-                      id="card-cvv"
-                      placeholder="•••"
-                      value={cvv}
-                      onChange={(e) =>
-                        setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))
-                      }
-                      inputMode="numeric"
-                      type="password"
-                      maxLength={4}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => setPayModalOpen(false)}
-                    disabled={paying}
-                    data-ocid="premium.cancel_button"
-                  >
-                    Отмена
-                  </Button>
-                  <Button
-                    className="flex-1 font-semibold"
-                    onClick={handlePay}
-                    disabled={paying}
-                    data-ocid="premium.submit_button"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, oklch(var(--premium)), oklch(var(--premium-dark)))",
-                      color: "oklch(var(--premium-foreground))",
-                      border: "none",
-                    }}
-                  >
-                    {paying ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Оплата…
-                      </>
-                    ) : (
-                      <>
-                        <Crown className="w-4 h-4 mr-2" />
-                        Оплатить $5
-                      </>
-                    )}
-                  </Button>
-                </div>
-
-                <p className="text-xs text-muted-foreground text-center">
-                  Это демо-форма. Реальные данные карты не отправляются.
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </DialogContent>
-      </Dialog>
     </main>
   );
 }

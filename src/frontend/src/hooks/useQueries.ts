@@ -212,6 +212,30 @@ export function useGrantPremium() {
   });
 }
 
+// ─── Stripe (frontend-only, for future backend integration) ─────
+/**
+ * Placeholder hook for Stripe Checkout session creation.
+ * When the backend gets a dedicated Stripe endpoint (e.g. createCheckoutSession),
+ * replace the mutationFn body with the actual actor call and return the session URL.
+ *
+ * Publishable key: pk_test_51T7utTQWwqSrLahO9yAmm0Vi7lu6EthKZ5PS4clnIsBozc49R4uJUSw06wB70QfMRbU9xeFU39059ozeCm262q4u00LXVK3nkZ
+ */
+export function useCreateStripeCheckout() {
+  return useMutation({
+    mutationFn: async (_params: {
+      priceId: string;
+      successUrl: string;
+      cancelUrl: string;
+    }) => {
+      // TODO: Call actor.createStripeCheckoutSession(_params) once the backend endpoint exists.
+      // For now, this hook is a no-op — payment is handled via Stripe Payment Link redirect.
+      throw new Error(
+        "Backend Stripe checkout endpoint not yet configured. Use Payment Link redirect.",
+      );
+    },
+  });
+}
+
 // ─── Chat ─────────────────────────────────────────────────────
 export function useMessages(productId: string) {
   const { actor, isFetching } = useActor();

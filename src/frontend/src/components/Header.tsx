@@ -9,11 +9,13 @@ import {
   Settings,
   ShoppingCart,
   User,
+  Wallet,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { useCart } from "../context/CartContext";
+import { useBalance } from "../hooks/useBalance";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useIsPremiumActive } from "../hooks/useQueries";
 
@@ -24,6 +26,7 @@ export function Header() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const isLoggedIn = !!identity;
+  const { balance } = useBalance();
 
   const { data: isPremium } = useIsPremiumActive();
 
@@ -106,6 +109,22 @@ export function Header() {
           >
             <RefreshCw className="w-5 h-5" />
           </Button>
+
+          {/* Wallet / Balance */}
+          <Link to="/balance" data-ocid="nav.balance_button">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-1.5 px-2.5"
+              aria-label="Мой баланс"
+              asChild={false}
+            >
+              <Wallet className="w-4 h-4" />
+              <span className="text-sm font-semibold tabular-nums">
+                ${balance.toFixed(2)}
+              </span>
+            </Button>
+          </Link>
 
           {/* Cart */}
           <Button

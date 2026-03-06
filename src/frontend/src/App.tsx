@@ -5,16 +5,20 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  redirect,
 } from "@tanstack/react-router";
 import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
 import { CartProvider } from "./context/CartContext";
+import { BalancePage } from "./pages/BalancePage";
 import { CartPage } from "./pages/CartPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import { HomePage } from "./pages/HomePage";
 import { OrderSuccessPage } from "./pages/OrderSuccessPage";
 import { PremiumPage } from "./pages/PremiumPage";
+import { PremiumSuccessPage } from "./pages/PremiumSuccessPage";
 import { ProductPage } from "./pages/ProductPage";
+import { AdminBalancePage } from "./pages/admin/AdminBalancePage";
 import { AdminLayout } from "./pages/admin/AdminLayout";
 import { AdminOrdersPage } from "./pages/admin/AdminOrdersPage";
 import { AdminPremiumPage } from "./pages/admin/AdminPremiumPage";
@@ -76,11 +80,32 @@ const premiumRoute = createRoute({
   component: PremiumPage,
 });
 
+const premiumSuccessRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/premium-success",
+  component: PremiumSuccessPage,
+});
+
+const balanceRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/balance",
+  component: BalancePage,
+});
+
 // Admin layout wrapper — no header/footer separation needed (uses RootLayout)
 const adminLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin",
   component: AdminLayout,
+});
+
+// Redirect /admin → /admin/products
+const adminIndexRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: "/",
+  beforeLoad: () => {
+    throw redirect({ to: "/admin/products" });
+  },
 });
 
 const adminProductsRoute = createRoute({
@@ -107,6 +132,12 @@ const adminShowcaseRoute = createRoute({
   component: AdminShowcasePage,
 });
 
+const adminBalanceRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: "/balance",
+  component: AdminBalancePage,
+});
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   productRoute,
@@ -114,11 +145,15 @@ const routeTree = rootRoute.addChildren([
   checkoutRoute,
   orderSuccessRoute,
   premiumRoute,
+  premiumSuccessRoute,
+  balanceRoute,
   adminLayoutRoute.addChildren([
+    adminIndexRoute,
     adminProductsRoute,
     adminOrdersRoute,
     adminPremiumRoute,
     adminShowcaseRoute,
+    adminBalanceRoute,
   ]),
 ]);
 

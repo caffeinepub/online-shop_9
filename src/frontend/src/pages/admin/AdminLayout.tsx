@@ -7,6 +7,7 @@ import {
   Lock,
   Package,
   RefreshCw,
+  Wallet,
 } from "lucide-react";
 import { useState } from "react";
 import { AdminPasswordGate } from "./AdminPasswordGate";
@@ -63,6 +64,14 @@ export function AdminLayout() {
           >
             <Crown className="w-4 h-4" />
             Премиум
+          </Link>
+          <Link
+            to="/admin/balance"
+            className="flex items-center gap-2.5 px-3 py-2.5 rounded-md text-sm font-medium hover:bg-muted transition-colors [&.active]:bg-primary [&.active]:text-primary-foreground"
+            data-ocid="admin.nav.balance.link"
+          >
+            <Wallet className="w-4 h-4" />
+            Кошельки
           </Link>
 
           <div className="pt-4 border-t border-border mt-2 space-y-1">
