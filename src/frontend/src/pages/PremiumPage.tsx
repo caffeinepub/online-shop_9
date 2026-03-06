@@ -14,8 +14,8 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
+import { useAuth } from "../context/AuthContext";
 import { useBalance } from "../hooks/useBalance";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useIsPremiumActive, usePremiumStatus } from "../hooks/useQueries";
 
 // TODO: Replace with your real Stripe Payment Link from dashboard.stripe.com
@@ -55,8 +55,7 @@ function formatExpiry(ns: bigint): string {
 }
 
 export function PremiumPage() {
-  const { identity, login } = useInternetIdentity();
-  const isLoggedIn = !!identity;
+  const { isLoggedIn } = useAuth();
   const navigate = useNavigate();
   const { balance, spendBalance } = useBalance();
 
@@ -80,7 +79,7 @@ export function PremiumPage() {
       toast("Сначала войдите в аккаунт", {
         action: {
           label: "Войти",
-          onClick: login,
+          onClick: () => navigate({ to: "/login" }),
         },
       });
       return;

@@ -9,33 +9,39 @@ import {
 } from "@tanstack/react-router";
 import { Footer } from "./components/Footer";
 import { Header } from "./components/Header";
+import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { BalancePage } from "./pages/BalancePage";
 import { CartPage } from "./pages/CartPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import { HomePage } from "./pages/HomePage";
+import { LoginPage } from "./pages/LoginPage";
 import { OrderSuccessPage } from "./pages/OrderSuccessPage";
 import { PremiumPage } from "./pages/PremiumPage";
 import { PremiumSuccessPage } from "./pages/PremiumSuccessPage";
 import { ProductPage } from "./pages/ProductPage";
+import { RegisterPage } from "./pages/RegisterPage";
 import { AdminBalancePage } from "./pages/admin/AdminBalancePage";
 import { AdminLayout } from "./pages/admin/AdminLayout";
 import { AdminOrdersPage } from "./pages/admin/AdminOrdersPage";
 import { AdminPremiumPage } from "./pages/admin/AdminPremiumPage";
 import { AdminProductsPage } from "./pages/admin/AdminProductsPage";
 import { AdminShowcasePage } from "./pages/admin/AdminShowcasePage";
+import { AdminUsersPage } from "./pages/admin/AdminUsersPage";
 
 // ─── Root Layout ───────────────────────────────────────────
 function RootLayout() {
   return (
-    <CartProvider>
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <Outlet />
-        <Footer />
-      </div>
-      <Toaster richColors position="top-right" />
-    </CartProvider>
+    <AuthProvider>
+      <CartProvider>
+        <div className="min-h-screen flex flex-col">
+          <Header />
+          <Outlet />
+          <Footer />
+        </div>
+        <Toaster richColors position="top-right" />
+      </CartProvider>
+    </AuthProvider>
   );
 }
 
@@ -48,6 +54,18 @@ const homeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   component: HomePage,
+});
+
+const loginRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/login",
+  component: LoginPage,
+});
+
+const registerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/register",
+  component: RegisterPage,
 });
 
 const productRoute = createRoute({
@@ -92,7 +110,7 @@ const balanceRoute = createRoute({
   component: BalancePage,
 });
 
-// Admin layout wrapper — no header/footer separation needed (uses RootLayout)
+// Admin layout wrapper
 const adminLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/admin",
@@ -138,8 +156,16 @@ const adminBalanceRoute = createRoute({
   component: AdminBalancePage,
 });
 
+const adminUsersRoute = createRoute({
+  getParentRoute: () => adminLayoutRoute,
+  path: "/users",
+  component: AdminUsersPage,
+});
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
+  loginRoute,
+  registerRoute,
   productRoute,
   cartRoute,
   checkoutRoute,
@@ -154,6 +180,7 @@ const routeTree = rootRoute.addChildren([
     adminPremiumRoute,
     adminShowcaseRoute,
     adminBalanceRoute,
+    adminUsersRoute,
   ]),
 ]);
 

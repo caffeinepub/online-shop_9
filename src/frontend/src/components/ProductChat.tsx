@@ -2,11 +2,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useNavigate } from "@tanstack/react-router";
 import { Loader2, MessageSquare, Send } from "lucide-react";
 import { motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useAuth } from "../context/AuthContext";
 import { useMessages, useSendMessage } from "../hooks/useQueries";
 
 interface ProductChatProps {
@@ -24,8 +25,8 @@ function formatTime(ns: bigint): string {
 }
 
 export function ProductChat({ productId }: ProductChatProps) {
-  const { identity, login } = useInternetIdentity();
-  const isLoggedIn = !!identity;
+  const { currentUser, isLoggedIn } = useAuth();
+  const navigate = useNavigate();
 
   const { data: messages = [], isLoading } = useMessages(productId);
   const { mutateAsync: sendMessage, isPending: sending } = useSendMessage();
@@ -46,9 +47,7 @@ export function ProductChat({ productId }: ProductChatProps) {
     const trimmed = text.trim();
     if (!trimmed) return;
 
-    const senderName = identity
-      ? `${identity.getPrincipal().toString().slice(0, 10)}…`
-      : "Аноним";
+    const senderName = currentUser ? currentUser.email.split("@")[0] : "Аноним";
 
     try {
       await sendMessage({ productId, senderName, text: trimmed });
@@ -174,7 +173,7 @@ export function ProductChat({ productId }: ProductChatProps) {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={login}
+                onClick={() => navigate({ to: "/login" })}
                 data-ocid="chat.send_button"
               >
                 Войти

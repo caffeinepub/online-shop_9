@@ -4,12 +4,11 @@ import { CheckCircle2, Crown, Home, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useAuth } from "../context/AuthContext";
 import { useSetPremiumExpiry } from "../hooks/useQueries";
 
 export function PremiumSuccessPage() {
-  const { identity } = useInternetIdentity();
-  const isLoggedIn = !!identity;
+  const { isLoggedIn } = useAuth();
 
   // session_id may be present in URL query params from Stripe redirect
   const search = useSearch({ strict: false }) as { session_id?: string };

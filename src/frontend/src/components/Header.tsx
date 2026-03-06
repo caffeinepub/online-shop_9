@@ -9,23 +9,22 @@ import {
   Settings,
   ShoppingCart,
   User,
+  UserPlus,
   Wallet,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useBalance } from "../hooks/useBalance";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useIsPremiumActive } from "../hooks/useQueries";
 
 export function Header() {
   const { totalItems } = useCart();
-  const { login, clear, identity, isLoggingIn, isInitializing } =
-    useInternetIdentity();
+  const { currentUser, isLoggedIn, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const isLoggedIn = !!identity;
   const { balance } = useBalance();
 
   const { data: isPremium } = useIsPremiumActive();
@@ -143,34 +142,48 @@ export function Header() {
             )}
           </Button>
 
-          {/* Login/Logout */}
-          {isLoggedIn ? (
+          {/* Login / Register / User info */}
+          {isLoggedIn && currentUser ? (
             <div className="hidden md:flex items-center gap-2">
-              <span className="text-xs text-muted-foreground truncate max-w-24">
-                {identity.getPrincipal().toString().slice(0, 8)}…
+              <span
+                className="text-xs text-muted-foreground truncate max-w-28 font-medium"
+                title={currentUser.email}
+              >
+                {currentUser.email.split("@")[0]}
               </span>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={clear}
+                onClick={logout}
                 aria-label="Выйти"
-                data-ocid="nav.login_button"
+                data-ocid="nav.logout_button"
               >
                 <LogOut className="w-4 h-4" />
               </Button>
             </div>
           ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={login}
-              disabled={isLoggingIn || isInitializing}
-              className="hidden md:flex items-center gap-2"
-              data-ocid="nav.login_button"
-            >
-              <User className="w-4 h-4" />
-              {isLoggingIn ? "Вход…" : "Войти"}
-            </Button>
+            <div className="hidden md:flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate({ to: "/login" })}
+                className="flex items-center gap-1.5"
+                data-ocid="nav.login_button"
+              >
+                <User className="w-4 h-4" />
+                Войти
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate({ to: "/register" })}
+                className="flex items-center gap-1.5"
+                data-ocid="nav.register_button"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span className="hidden lg:inline">Регистрация</span>
+              </Button>
+            </div>
           )}
 
           {/* Mobile hamburger */}
@@ -228,30 +241,50 @@ export function Header() {
                 {isPremium ? "PRO — Активен" : "Премиум — $5/мес"}
               </Link>
               <div className="pt-2 border-t border-border">
-                {isLoggedIn ? (
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start gap-2"
-                    onClick={() => {
-                      clear();
-                      setMobileOpen(false);
-                    }}
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Выйти
-                  </Button>
+                {isLoggedIn && currentUser ? (
+                  <div className="space-y-1">
+                    <p className="px-4 py-2 text-xs text-muted-foreground font-medium">
+                      {currentUser.email}
+                    </p>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start gap-2"
+                      onClick={() => {
+                        logout();
+                        setMobileOpen(false);
+                      }}
+                      data-ocid="nav.mobile_logout_button"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Выйти
+                    </Button>
+                  </div>
                 ) : (
-                  <Button
-                    className="w-full gap-2"
-                    onClick={() => {
-                      login();
-                      setMobileOpen(false);
-                    }}
-                    disabled={isLoggingIn}
-                  >
-                    <User className="w-4 h-4" />
-                    {isLoggingIn ? "Вход…" : "Войти"}
-                  </Button>
+                  <div className="space-y-2">
+                    <Button
+                      className="w-full gap-2"
+                      onClick={() => {
+                        navigate({ to: "/login" });
+                        setMobileOpen(false);
+                      }}
+                      data-ocid="nav.mobile_login_button"
+                    >
+                      <User className="w-4 h-4" />
+                      Войти
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full gap-2"
+                      onClick={() => {
+                        navigate({ to: "/register" });
+                        setMobileOpen(false);
+                      }}
+                      data-ocid="nav.mobile_register_button"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Зарегистрироваться
+                    </Button>
+                  </div>
                 )}
               </div>
             </nav>
