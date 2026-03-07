@@ -18,6 +18,7 @@ import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import { useBalance } from "../hooks/useBalance";
+import { useCurrency } from "../hooks/useCurrency";
 import { useIsPremiumActive } from "../hooks/useQueries";
 
 export function Header() {
@@ -26,6 +27,7 @@ export function Header() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { balance } = useBalance();
+  const { format: formatBalance } = useCurrency();
 
   const { data: isPremium } = useIsPremiumActive();
 
@@ -120,7 +122,7 @@ export function Header() {
             >
               <Wallet className="w-4 h-4" />
               <span className="text-sm font-semibold tabular-nums">
-                ${balance.toFixed(2)}
+                {formatBalance(balance)}
               </span>
             </Button>
           </Link>

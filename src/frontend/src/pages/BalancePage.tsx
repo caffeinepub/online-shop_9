@@ -17,6 +17,12 @@ import { motion } from "motion/react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { creditBalance, useBalance } from "../hooks/useBalance";
+import {
+  CURRENCIES,
+  type CurrencyCode,
+  formatInCurrency,
+  useCurrency,
+} from "../hooks/useCurrency";
 
 function formatDate(iso: string): string {
   return new Intl.DateTimeFormat("ru-RU", {
@@ -28,11 +34,12 @@ function formatDate(iso: string): string {
   }).format(new Date(iso));
 }
 
-const TOP_UP_AMOUNTS = [5, 10, 20, 50];
+const TOP_UP_AMOUNTS_USD = [5, 10, 20, 50];
 
 export function BalancePage() {
   const { balance, history, userId, spendBalance } = useBalance();
   const navigate = useNavigate();
+  const { currency, setCurrency, currencyInfo, format } = useCurrency();
 
   // Handle Stripe return with topup_amount param
   useEffect(() => {
@@ -49,13 +56,12 @@ export function BalancePage() {
           `Пополнение через банковскую карту $${amount.toFixed(2)}`,
         );
         if (ok) {
-          toast.success(`Баланс пополнен на $${amount.toFixed(2)}`);
+          toast.success(`Баланс пополнен на ${format(amount)}`);
         }
       }
-      // Clean URL params
       window.history.replaceState({}, "", window.location.pathname);
     }
-  }, [userId]);
+  }, [userId, format]);
 
   function handlePayPremium() {
     const ok = spendBalance(5, "Активация Премиум-подписки");
@@ -63,15 +69,14 @@ export function BalancePage() {
       toast.error("Недостаточно средств на балансе");
       return;
     }
-    // Store premium expiry: 30 days from now
     const expiry = Date.now() + 30 * 24 * 60 * 60 * 1000;
     localStorage.setItem("shop_premium_expiry", expiry.toString());
     toast.success("Премиум активирован на 30 дней!");
     navigate({ to: "/premium" });
   }
 
-  function handleCardTopUp(amount: number) {
-    const successUrl = `${window.location.origin}/balance?topup_amount=${amount}&topup_ok=1`;
+  function handleCardTopUp(amountUsd: number) {
+    const successUrl = `${window.location.origin}/balance?topup_amount=${amountUsd}&topup_ok=1`;
     const stripeUrl = `https://buy.stripe.com/test_3cs9Dvfgwbzz8LC000?success_url=${encodeURIComponent(successUrl)}`;
     window.location.href = stripeUrl;
   }
@@ -102,6 +107,41 @@ export function BalancePage() {
             <p className="text-sm text-muted-foreground mt-0.5">
               Пополните баланс картой или через администратора
             </p>
+          </div>
+        </motion.div>
+
+        {/* Currency selector */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.01 }}
+          className="mb-4"
+        >
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-muted-foreground font-medium">
+              Валюта:
+            </span>
+            {CURRENCIES.map((c) => (
+              <button
+                key={c.code}
+                type="button"
+                onClick={() => setCurrency(c.code as CurrencyCode)}
+                data-ocid={"balance.currency.tab"}
+                className={[
+                  "px-3 py-1.5 rounded-lg text-sm font-semibold border-2 transition-all",
+                  currency === c.code
+                    ? "border-primary text-primary"
+                    : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                ].join(" ")}
+                style={
+                  currency === c.code
+                    ? { background: "oklch(var(--primary) / 0.08)" }
+                    : {}
+                }
+              >
+                {c.symbol} {c.name}
+              </button>
+            ))}
           </div>
         </motion.div>
 
@@ -148,8 +188,14 @@ export function BalancePage() {
                 Текущий баланс
               </p>
               <div className="font-display text-5xl font-bold text-foreground tracking-tight">
-                ${balance.toFixed(2)}
+                {format(balance)}
               </div>
+              {/* Secondary value in USD if not USD */}
+              {currency !== "USD" && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  ≈ ${balance.toFixed(2)} USD
+                </p>
+              )}
             </div>
 
             {balance >= 5 && (
@@ -169,7 +215,8 @@ export function BalancePage() {
                   }}
                 >
                   <Crown className="w-5 h-5" />
-                  Оплатить премиум с баланса ($5)
+                  Оплатить премиум с баланса (
+                  {formatInCurrency(5, currencyInfo)})
                 </Button>
               </CardContent>
             )}
@@ -207,13 +254,13 @@ export function BalancePage() {
 
             <CardContent className="px-6 pb-6">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-                {TOP_UP_AMOUNTS.map((amount) => (
+                {TOP_UP_AMOUNTS_USD.map((amountUsd) => (
                   <motion.button
-                    key={amount}
+                    key={amountUsd}
                     whileHover={{ scale: 1.03 }}
                     whileTap={{ scale: 0.97 }}
-                    onClick={() => handleCardTopUp(amount)}
-                    data-ocid={`balance.topup.button.${amount}`}
+                    onClick={() => handleCardTopUp(amountUsd)}
+                    data-ocid={`balance.topup.button.${amountUsd}`}
                     className="relative flex flex-col items-center justify-center py-4 rounded-xl border-2 font-semibold transition-all cursor-pointer"
                     style={{
                       borderColor: "oklch(var(--primary) / 0.25)",
@@ -234,13 +281,13 @@ export function BalancePage() {
                     }}
                   >
                     <span
-                      className="text-2xl font-bold font-display"
+                      className="text-xl font-bold font-display leading-tight"
                       style={{ color: "oklch(var(--primary))" }}
                     >
-                      ${amount}
+                      {formatInCurrency(amountUsd, currencyInfo)}
                     </span>
                     <span className="text-xs text-muted-foreground mt-0.5">
-                      USD
+                      ≈ ${amountUsd}
                     </span>
                   </motion.button>
                 ))}
@@ -357,8 +404,8 @@ export function BalancePage() {
                               : "oklch(var(--destructive) / 0.08)",
                         }}
                       >
-                        {tx.type === "deposit" ? "+" : "-"}$
-                        {tx.amount.toFixed(2)}
+                        {tx.type === "deposit" ? "+" : "-"}
+                        {format(tx.amount)}
                       </Badge>
                     </motion.li>
                   ))}

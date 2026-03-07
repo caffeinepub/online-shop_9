@@ -2,20 +2,40 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { CheckCircle, DollarSign, Hash, Wallet } from "lucide-react";
+import { CheckCircle, Hash, Wallet } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { adminTopUpUser } from "../../hooks/useBalance";
+import {
+  CURRENCIES,
+  type CurrencyCode,
+  type CurrencyInfo,
+  formatInCurrency,
+  getCurrencyInfo,
+} from "../../hooks/useCurrency";
 
-const QUICK_AMOUNTS = [5, 10, 20, 50, 100];
+const QUICK_AMOUNTS_BY_CURRENCY: Record<CurrencyCode, number[]> = {
+  USD: [5, 10, 20, 50, 100],
+  RUB: [500, 1000, 2000, 5000, 10000],
+  TJS: [50, 100, 200, 500, 1000],
+};
 
 export function AdminBalancePage() {
   const [userId, setUserId] = useState("");
   const [amount, setAmount] = useState("");
+  const [selectedCurrency, setSelectedCurrency] = useState<CurrencyCode>("USD");
   const [lastTopUp, setLastTopUp] = useState<{
     userId: string;
-    amount: number;
+    amountUsd: number;
+    displayAmount: string;
   } | null>(null);
+
+  const currencyInfo: CurrencyInfo = getCurrencyInfo(selectedCurrency);
+  const quickAmounts = QUICK_AMOUNTS_BY_CURRENCY[selectedCurrency];
+
+  function toUsd(localAmount: number): number {
+    return localAmount / currencyInfo.rateToUsd;
+  }
 
   function handleTopUp() {
     const trimmedId = userId.trim();
@@ -30,16 +50,19 @@ export function AdminBalancePage() {
       return;
     }
 
+    const amountUsd = toUsd(amountNum);
+    const displayAmount = formatInCurrency(amountUsd, currencyInfo);
+
     const ok = adminTopUpUser(
       trimmedId,
-      amountNum,
-      `Пополнение от администратора на $${amountNum.toFixed(2)}`,
+      amountUsd,
+      `Пополнение от администратора на ${displayAmount}`,
     );
 
     if (ok) {
-      setLastTopUp({ userId: trimmedId, amount: amountNum });
+      setLastTopUp({ userId: trimmedId, amountUsd, displayAmount });
       toast.success(
-        `Баланс пользователя #${trimmedId} пополнен на $${amountNum.toFixed(2)}`,
+        `Баланс пользователя #${trimmedId} пополнен на ${displayAmount}`,
       );
       setUserId("");
       setAmount("");
@@ -71,6 +94,37 @@ export function AdminBalancePage() {
         className="bg-card border border-border rounded-xl p-6 space-y-5"
         data-ocid="admin.balance.card"
       >
+        {/* Currency selector */}
+        <div className="space-y-1.5">
+          <Label className="text-sm font-medium">Валюта пополнения</Label>
+          <div className="flex gap-2 flex-wrap">
+            {CURRENCIES.map((c) => (
+              <button
+                key={c.code}
+                type="button"
+                onClick={() => {
+                  setSelectedCurrency(c.code as CurrencyCode);
+                  setAmount("");
+                }}
+                data-ocid={"admin.balance.currency.tab"}
+                className={[
+                  "px-3 py-1.5 rounded-lg text-sm font-semibold border-2 transition-all",
+                  selectedCurrency === c.code
+                    ? "border-primary text-primary"
+                    : "border-border text-muted-foreground hover:border-primary/40",
+                ].join(" ")}
+                style={
+                  selectedCurrency === c.code
+                    ? { background: "oklch(var(--primary) / 0.08)" }
+                    : {}
+                }
+              >
+                {c.symbol} {c.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* User ID */}
         <div className="space-y-1.5">
           <Label htmlFor="topup-user-id" className="flex items-center gap-1.5">
@@ -94,8 +148,8 @@ export function AdminBalancePage() {
         {/* Amount */}
         <div className="space-y-1.5">
           <Label htmlFor="topup-amount" className="flex items-center gap-1.5">
-            <DollarSign className="w-3.5 h-3.5" />
-            Сумма пополнения ($)
+            <span className="font-bold">{currencyInfo.symbol}</span>
+            Сумма пополнения ({currencyInfo.name})
           </Label>
           <Input
             id="topup-amount"
@@ -107,11 +161,16 @@ export function AdminBalancePage() {
             onChange={(e) => setAmount(e.target.value)}
             data-ocid="admin.balance.amount.input"
           />
+          {amount && Number.parseFloat(amount) > 0 && (
+            <p className="text-xs text-muted-foreground">
+              ≈ ${toUsd(Number.parseFloat(amount)).toFixed(2)} USD
+            </p>
+          )}
         </div>
 
         {/* Quick amount buttons */}
         <div className="flex flex-wrap gap-2">
-          {QUICK_AMOUNTS.map((a) => (
+          {quickAmounts.map((a) => (
             <Button
               key={a}
               variant="outline"
@@ -120,7 +179,8 @@ export function AdminBalancePage() {
               className="font-semibold hover:border-primary hover:text-primary transition-colors"
               data-ocid={`admin.balance.quick_button.${a}`}
             >
-              +${a}
+              +{currencyInfo.symbol}
+              {a}
             </Button>
           ))}
         </div>
@@ -156,8 +216,7 @@ export function AdminBalancePage() {
               Успешно пополнено
             </p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Пользователь #{lastTopUp.userId} &nbsp;+$
-              {lastTopUp.amount.toFixed(2)}
+              Пользователь #{lastTopUp.userId} &nbsp;+{lastTopUp.displayAmount}
             </p>
           </div>
         </div>
