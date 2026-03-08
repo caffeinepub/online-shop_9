@@ -3,11 +3,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PackageSearch, Star, TrendingUp } from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ProductCard } from "../components/ProductCard";
+import { UserProductCard } from "../components/UserProductCard";
+import { useAuth } from "../context/AuthContext";
 import { SAMPLE_CATEGORIES, SAMPLE_PRODUCTS } from "../data/sampleProducts";
 import { getShowcaseItems } from "../data/showcaseItems";
+import {
+  CURRENCIES,
+  type CurrencyCode,
+  useCurrency,
+} from "../hooks/useCurrency";
 import { useCategories, useProducts } from "../hooks/useQueries";
+import { useUserProducts } from "../hooks/useUserProducts";
 
 const containerVariants = {
   hidden: {},
@@ -26,6 +34,8 @@ const itemVariants = {
 export function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const showcaseItems = getShowcaseItems();
+  const { currentUser } = useAuth();
+  const { currency, setCurrency } = useCurrency();
 
   const { data: categoriesData, isLoading: catLoading } = useCategories();
   const {
@@ -34,16 +44,36 @@ export function HomePage() {
     isError,
   } = useProducts(selectedCategory === "all" ? null : selectedCategory);
 
+  // User products from localStorage
+  const { getAllUserProducts } = useUserProducts(currentUser?.userId);
+  const userProducts = useMemo(
+    () => getAllUserProducts(),
+    [getAllUserProducts],
+  );
+
   // Use sample data when backend returns empty
   const rawProducts = productsData ?? [];
-  const products = rawProducts.length > 0 ? rawProducts : SAMPLE_PRODUCTS;
+  const backendProducts =
+    rawProducts.length > 0 ? rawProducts : SAMPLE_PRODUCTS;
   const categories =
     (categoriesData ?? []).length > 0 ? categoriesData! : SAMPLE_CATEGORIES;
 
-  const displayProducts =
+  // Merge user categories with backend categories
+  const allCategories = useMemo(() => {
+    const userCats = [...new Set(userProducts.map((p) => p.category))];
+    const combined = [...new Set([...categories, ...userCats])];
+    return combined;
+  }, [categories, userProducts]);
+
+  const displayBackendProducts =
     selectedCategory === "all"
-      ? products
-      : products.filter((p) => p.category === selectedCategory);
+      ? backendProducts
+      : backendProducts.filter((p) => p.category === selectedCategory);
+
+  const displayUserProducts =
+    selectedCategory === "all"
+      ? userProducts
+      : userProducts.filter((p) => p.category === selectedCategory);
 
   const isLoading = prodLoading || catLoading;
 
@@ -135,6 +165,31 @@ export function HomePage() {
       <section className="container mx-auto px-4 py-10">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <h2 className="font-display text-3xl font-bold">Каталог товаров</h2>
+          {/* Currency switcher */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-muted-foreground">Валюта:</span>
+            {CURRENCIES.map((c) => (
+              <button
+                key={c.code}
+                type="button"
+                onClick={() => setCurrency(c.code as CurrencyCode)}
+                data-ocid="catalog.currency.tab"
+                className={[
+                  "px-3 py-1.5 rounded-lg text-sm font-semibold border-2 transition-all",
+                  currency === c.code
+                    ? "border-primary text-primary"
+                    : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                ].join(" ")}
+                style={
+                  currency === c.code
+                    ? { background: "oklch(var(--primary) / 0.08)" }
+                    : {}
+                }
+              >
+                {c.symbol} {c.name}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Category Tabs */}
@@ -158,7 +213,7 @@ export function HomePage() {
               >
                 Все товары
               </TabsTrigger>
-              {categories.map((cat, i) => (
+              {allCategories.map((cat, i) => (
                 <TabsTrigger
                   key={cat}
                   value={cat}
@@ -188,7 +243,8 @@ export function HomePage() {
               Ошибка загрузки товаров. Попробуйте снова.
             </p>
           </div>
-        ) : displayProducts.length === 0 ? (
+        ) : displayBackendProducts.length === 0 &&
+          displayUserProducts.length === 0 ? (
           <div
             className="text-center py-20 text-muted-foreground"
             data-ocid="catalog.empty_state"
@@ -204,9 +260,17 @@ export function HomePage() {
             animate="show"
             className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6"
           >
-            {displayProducts.map((product, i) => (
+            {displayBackendProducts.map((product, i) => (
               <motion.div key={product.id} variants={itemVariants}>
                 <ProductCard product={product} index={i + 1} />
+              </motion.div>
+            ))}
+            {displayUserProducts.map((product, i) => (
+              <motion.div key={product.id} variants={itemVariants}>
+                <UserProductCard
+                  product={product}
+                  index={displayBackendProducts.length + i + 1}
+                />
               </motion.div>
             ))}
           </motion.div>

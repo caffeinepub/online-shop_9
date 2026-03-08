@@ -5,6 +5,7 @@ import {
   Crown,
   LogOut,
   Menu,
+  Package,
   RefreshCw,
   Settings,
   ShoppingCart,
@@ -52,6 +53,16 @@ export function Header() {
           >
             Каталог
           </Link>
+          {isLoggedIn && (
+            <Link
+              to="/my-products"
+              className="px-4 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-all flex items-center gap-1.5"
+              data-ocid="nav.my_products_link"
+            >
+              <Package className="w-4 h-4" />
+              Мои товары
+            </Link>
+          )}
           <Link
             to="/admin/products"
             className="px-4 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-all flex items-center gap-1.5"
@@ -223,6 +234,17 @@ export function Header() {
               >
                 Каталог
               </Link>
+              {isLoggedIn && (
+                <Link
+                  to="/my-products"
+                  className="px-4 py-3 rounded-md text-sm font-medium hover:bg-muted transition-colors flex items-center gap-2"
+                  onClick={() => setMobileOpen(false)}
+                  data-ocid="nav.my_products_link"
+                >
+                  <Package className="w-4 h-4" />
+                  Мои товары
+                </Link>
+              )}
               <Link
                 to="/admin/products"
                 className="px-4 py-3 rounded-md text-sm font-medium hover:bg-muted transition-colors flex items-center gap-2"

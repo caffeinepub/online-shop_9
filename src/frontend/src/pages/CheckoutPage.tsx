@@ -35,7 +35,11 @@ export function CheckoutPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("delivery");
 
-  const orderTotalInDollars = Number(totalPrice) / 100;
+  // totalPrice is in kopecks (1 ruble = 100 kopecks); convert to USD for balance comparison
+  // 1 USD = 91.5 RUB (matching the rate in useCurrency)
+  const RUB_TO_USD = 1 / 91.5;
+  const orderTotalInRubles = Number(totalPrice) / 100;
+  const orderTotalInDollars = orderTotalInRubles * RUB_TO_USD;
   const hasEnoughBalance = balance >= orderTotalInDollars;
 
   function validate() {
@@ -70,7 +74,7 @@ export function CheckoutPage() {
       }
       const spent = spendBalance(
         orderTotalInDollars,
-        `Оплата заказа на $${orderTotalInDollars.toFixed(2)}`,
+        `Оплата заказа на ${orderTotalInRubles.toFixed(0)} ₽`,
       );
       if (!spent) {
         toast.error("Не удалось списать средства с баланса. Попробуйте снова.");

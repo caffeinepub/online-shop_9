@@ -6,7 +6,11 @@ import { toast } from "sonner";
 import type { Product } from "../backend.d";
 import { useCart } from "../context/CartContext";
 import { SAMPLE_IMAGES } from "../data/sampleProducts";
-import { formatPrice } from "../utils/format";
+import {
+  formatInCurrency,
+  getCurrencyInfo,
+  useCurrency,
+} from "../hooks/useCurrency";
 
 interface ProductCardProps {
   product: Product;
@@ -16,6 +20,12 @@ interface ProductCardProps {
 export function ProductCard({ product, index }: ProductCardProps) {
   const { addItem, items } = useCart();
   const inCart = items.some((i) => i.productId === product.id);
+  const { currencyInfo } = useCurrency();
+
+  // product.price is in kopecks (RUB base). Convert to USD then to user currency.
+  const RUB_RATE = getCurrencyInfo("RUB").rateToUsd; // 91.5
+  const priceUsd = Number(product.price) / 100 / RUB_RATE;
+  const displayPrice = formatInCurrency(priceUsd, currencyInfo);
 
   // Resolve image: use sample fallback for sample products
   const imageSrc = product.imageId
@@ -79,7 +89,7 @@ export function ProductCard({ product, index }: ProductCardProps) {
           </p>
           <div className="flex items-center justify-between mt-2 gap-2">
             <span className="font-display font-bold text-lg text-foreground">
-              {formatPrice(product.price)}
+              {displayPrice}
             </span>
             <Button
               size="sm"

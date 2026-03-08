@@ -16,6 +16,7 @@ import { CartPage } from "./pages/CartPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import { HomePage } from "./pages/HomePage";
 import { LoginPage } from "./pages/LoginPage";
+import { MyProductsPage } from "./pages/MyProductsPage";
 import { OrderSuccessPage } from "./pages/OrderSuccessPage";
 import { PremiumPage } from "./pages/PremiumPage";
 import { PremiumSuccessPage } from "./pages/PremiumSuccessPage";
@@ -110,6 +111,12 @@ const balanceRoute = createRoute({
   component: BalancePage,
 });
 
+const myProductsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/my-products",
+  component: MyProductsPage,
+});
+
 // Admin layout wrapper
 const adminLayoutRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -173,6 +180,7 @@ const routeTree = rootRoute.addChildren([
   premiumRoute,
   premiumSuccessRoute,
   balanceRoute,
+  myProductsRoute,
   adminLayoutRoute.addChildren([
     adminIndexRoute,
     adminProductsRoute,
