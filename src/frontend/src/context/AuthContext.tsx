@@ -33,13 +33,16 @@ interface AuthContextValue {
     userId: string,
     amount: number,
   ) => { ok: boolean; error?: string };
+  changeUserId: (
+    oldUserId: string,
+    newUserId: string,
+  ) => { ok: boolean; error?: string };
 }
 
 const USERS_KEY = "shop_registered_users";
 const SESSION_KEY = "shop_current_session";
 
 function simpleHash(str: string): string {
-  // Very simple hash — just for demo; not cryptographically secure
   let h = 0;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
@@ -80,7 +83,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loadSession(),
   );
 
-  // Keep session fresh: re-read from users list so blocked status propagates
   const currentUserId = currentUser?.userId;
   useEffect(() => {
     if (!currentUserId) return;
@@ -130,7 +132,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           error: "Пользователь с таким email уже существует",
         };
 
-      // Re-use existing userId from balance system or generate new one
       const userId = getUserId();
 
       const newUser: ShopUser = {
@@ -166,7 +167,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       u.userId === userId ? { ...u, isBlocked: true } : u,
     );
     saveUsers(updated);
-    // If blocked user is current session, force logout
     setCurrentUser((prev) => {
       if (prev?.userId === userId) {
         localStorage.removeItem(SESSION_KEY);
@@ -234,6 +234,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const changeUserId = useCallback(
+    (oldUserId: string, newUserId: string): { ok: boolean; error?: string } => {
+      const trimNew = newUserId.trim();
+      if (!/^\d+$/.test(trimNew))
+        return { ok: false, error: "ID должен состоять только из цифр" };
+      if (trimNew === oldUserId)
+        return { ok: false, error: "Новый ID совпадает с текущим" };
+
+      const users = loadUsers();
+      const conflict = users.find((u) => u.userId === trimNew);
+      if (conflict)
+        return {
+          ok: false,
+          error: `ID ${trimNew} уже занят другим пользователем`,
+        };
+
+      const target = users.find((u) => u.userId === oldUserId);
+      if (!target) return { ok: false, error: "Пользователь не найден" };
+
+      // Migrate balance and history keys in localStorage
+      const oldBalanceKey = `shop_balance_${oldUserId}`;
+      const newBalanceKey = `shop_balance_${trimNew}`;
+      const oldHistoryKey = `shop_balance_history_${oldUserId}`;
+      const newHistoryKey = `shop_balance_history_${trimNew}`;
+
+      const balanceVal = localStorage.getItem(oldBalanceKey);
+      if (balanceVal !== null) {
+        localStorage.setItem(newBalanceKey, balanceVal);
+        localStorage.removeItem(oldBalanceKey);
+      }
+      const historyVal = localStorage.getItem(oldHistoryKey);
+      if (historyVal !== null) {
+        localStorage.setItem(newHistoryKey, historyVal);
+        localStorage.removeItem(oldHistoryKey);
+      }
+
+      const updated = users.map((u) =>
+        u.userId === oldUserId ? { ...u, userId: trimNew } : u,
+      );
+      saveUsers(updated);
+
+      // If changed user is current session, update session
+      setCurrentUser((prev) => {
+        if (prev?.userId === oldUserId) {
+          const next = { ...prev, userId: trimNew };
+          localStorage.setItem(SESSION_KEY, JSON.stringify(next));
+          return next;
+        }
+        return prev;
+      });
+
+      return { ok: true };
+    },
+    [],
+  );
+
   return (
     <AuthContext.Provider
       value={{
@@ -246,6 +302,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         blockUser,
         unblockUser,
         deductBalance,
+        changeUserId,
       }}
     >
       {children}

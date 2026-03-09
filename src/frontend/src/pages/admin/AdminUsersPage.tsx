@@ -10,8 +10,10 @@ import {
   Hash,
   MessageCircle,
   MinusCircle,
+  Pencil,
   RefreshCw,
   Users,
+  X,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -32,11 +34,17 @@ function getBalance(userId: string): number {
 }
 
 export function AdminUsersPage() {
-  const { getAllUsers, blockUser, unblockUser, deductBalance } = useAuth();
+  const { getAllUsers, blockUser, unblockUser, deductBalance, changeUserId } =
+    useAuth();
   const [users, setUsers] = useState<ShopUser[]>(() => getAllUsers());
   const [deductUserId, setDeductUserId] = useState("");
   const [deductAmount, setDeductAmount] = useState("");
   const [deductError, setDeductError] = useState("");
+
+  // Editing state: which user's ID is being edited
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editIdValue, setEditIdValue] = useState("");
+  const [editIdError, setEditIdError] = useState("");
 
   function refresh() {
     setUsers(getAllUsers());
@@ -76,6 +84,33 @@ export function AdminUsersPage() {
     toast.success(`С кошелька #${trimId} списано $${amt.toFixed(2)}`);
     setDeductUserId("");
     setDeductAmount("");
+    refresh();
+  }
+
+  function startEditId(userId: string) {
+    setEditingUserId(userId);
+    setEditIdValue(userId);
+    setEditIdError("");
+  }
+
+  function cancelEditId() {
+    setEditingUserId(null);
+    setEditIdValue("");
+    setEditIdError("");
+  }
+
+  function handleSaveId(oldUserId: string) {
+    setEditIdError("");
+    const result = changeUserId(oldUserId, editIdValue);
+    if (!result.ok) {
+      setEditIdError(result.error ?? "Ошибка изменения ID");
+      return;
+    }
+    toast.success(
+      `ID пользователя изменён с #${oldUserId} на #${editIdValue.trim()}`,
+    );
+    setEditingUserId(null);
+    setEditIdValue("");
     refresh();
   }
 
@@ -207,10 +242,11 @@ export function AdminUsersPage() {
           </p>
           {users.map((user, idx) => {
             const balance = getBalance(user.userId);
+            const isEditing = editingUserId === user.userId;
             return (
               <div
                 key={user.userId}
-                className="bg-card border border-border rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-4"
+                className="bg-card border border-border rounded-xl p-5 flex flex-col gap-4"
                 data-ocid={`admin.users.item.${idx + 1}`}
                 style={
                   user.isBlocked
@@ -221,91 +257,161 @@ export function AdminUsersPage() {
                     : {}
                 }
               >
-                {/* Info */}
-                <div className="flex-1 min-w-0 space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-xs text-muted-foreground">
-                      #{user.userId}
-                    </span>
-                    <span className="font-semibold text-sm truncate">
-                      {user.email}
-                    </span>
-                    {user.isBlocked ? (
-                      <Badge
-                        variant="destructive"
-                        className="text-xs"
-                        data-ocid={`admin.users.blocked_badge.${idx + 1}`}
-                      >
-                        Заблокирован
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="outline"
-                        className="text-xs"
+                {/* Info row */}
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* ID display / edit */}
+                      {isEditing ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-xs text-muted-foreground">
+                            #
+                          </span>
+                          <Input
+                            autoFocus
+                            value={editIdValue}
+                            onChange={(e) =>
+                              setEditIdValue(
+                                e.target.value.replace(/\D/g, "").slice(0, 12),
+                              )
+                            }
+                            className="h-7 w-32 text-xs font-mono"
+                            placeholder="Новый ID"
+                            data-ocid={`admin.users.edit_id.input.${idx + 1}`}
+                          />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={() => handleSaveId(user.userId)}
+                            title="Сохранить"
+                            data-ocid={`admin.users.save_id.button.${idx + 1}`}
+                          >
+                            <CheckCircle className="w-3.5 h-3.5 text-green-500" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={cancelEditId}
+                            title="Отмена"
+                            data-ocid={`admin.users.cancel_id.button.${idx + 1}`}
+                          >
+                            <X className="w-3.5 h-3.5 text-muted-foreground" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono text-xs text-muted-foreground">
+                            #{user.userId}
+                          </span>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-5 w-5"
+                            onClick={() => startEditId(user.userId)}
+                            title="Изменить ID"
+                            data-ocid={`admin.users.edit_id.button.${idx + 1}`}
+                          >
+                            <Pencil className="w-3 h-3 text-muted-foreground" />
+                          </Button>
+                        </div>
+                      )}
+                      <span className="font-semibold text-sm truncate">
+                        {user.email}
+                      </span>
+                      {user.isBlocked ? (
+                        <Badge
+                          variant="destructive"
+                          className="text-xs"
+                          data-ocid={`admin.users.blocked_badge.${idx + 1}`}
+                        >
+                          Заблокирован
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="text-xs"
+                          style={{
+                            color: "oklch(var(--success))",
+                            borderColor: "oklch(var(--success) / 0.3)",
+                            background: "oklch(var(--success) / 0.07)",
+                          }}
+                        >
+                          Активен
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+                      {user.contact && (
+                        <span className="flex items-center gap-1">
+                          <MessageCircle className="w-3 h-3" />
+                          {user.contact}
+                        </span>
+                      )}
+                      <span>Зарег. {formatDate(user.registeredAt)}</span>
+                      <span
+                        className="font-semibold"
                         style={{
-                          color: "oklch(var(--success))",
-                          borderColor: "oklch(var(--success) / 0.3)",
-                          background: "oklch(var(--success) / 0.07)",
+                          color:
+                            balance > 0 ? "oklch(var(--success))" : undefined,
                         }}
                       >
-                        Активен
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
-                    {user.contact && (
-                      <span className="flex items-center gap-1">
-                        <MessageCircle className="w-3 h-3" />
-                        {user.contact}
+                        Баланс: ${balance.toFixed(2)}
                       </span>
+                    </div>
+                  </div>
+
+                  {/* Block/Unblock actions */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {user.isBlocked ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleUnblock(user.userId)}
+                        className="gap-1.5 text-xs"
+                        style={{
+                          borderColor: "oklch(var(--success) / 0.4)",
+                          color: "oklch(var(--success))",
+                        }}
+                        data-ocid={`admin.users.unblock.button.${idx + 1}`}
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" />
+                        Разблокировать
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleBlock(user.userId)}
+                        className="gap-1.5 text-xs"
+                        style={{
+                          borderColor: "oklch(var(--destructive) / 0.4)",
+                          color: "oklch(var(--destructive))",
+                        }}
+                        data-ocid={`admin.users.block.button.${idx + 1}`}
+                      >
+                        <Ban className="w-3.5 h-3.5" />
+                        Заблокировать
+                      </Button>
                     )}
-                    <span>Зарег. {formatDate(user.registeredAt)}</span>
-                    <span
-                      className="font-semibold"
-                      style={{
-                        color:
-                          balance > 0 ? "oklch(var(--success))" : undefined,
-                      }}
-                    >
-                      Баланс: ${balance.toFixed(2)}
-                    </span>
                   </div>
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-2 shrink-0">
-                  {user.isBlocked ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleUnblock(user.userId)}
-                      className="gap-1.5 text-xs"
-                      style={{
-                        borderColor: "oklch(var(--success) / 0.4)",
-                        color: "oklch(var(--success))",
-                      }}
-                      data-ocid={`admin.users.unblock.button.${idx + 1}`}
-                    >
-                      <CheckCircle className="w-3.5 h-3.5" />
-                      Разблокировать
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleBlock(user.userId)}
-                      className="gap-1.5 text-xs"
-                      style={{
-                        borderColor: "oklch(var(--destructive) / 0.4)",
-                        color: "oklch(var(--destructive))",
-                      }}
-                      data-ocid={`admin.users.block.button.${idx + 1}`}
-                    >
-                      <Ban className="w-3.5 h-3.5" />
-                      Заблокировать
-                    </Button>
-                  )}
-                </div>
+                {/* Edit ID error */}
+                {isEditing && editIdError && (
+                  <p
+                    className="text-xs rounded-lg px-3 py-1.5"
+                    style={{
+                      color: "oklch(var(--destructive))",
+                      background: "oklch(var(--destructive) / 0.08)",
+                      border: "1px solid oklch(var(--destructive) / 0.2)",
+                    }}
+                    data-ocid={`admin.users.edit_id.error_state.${idx + 1}`}
+                  >
+                    {editIdError}
+                  </p>
+                )}
               </div>
             );
           })}
